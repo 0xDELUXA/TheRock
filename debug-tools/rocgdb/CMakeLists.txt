@@ -654,6 +654,50 @@ if(BUILD_TESTING)
       COMPONENT tests
       USE_SOURCE_PERMISSIONS)
   endforeach()
+
+  # Also install the CI wrapper script to invoke rocgdb tests.
+  # This is used in the context of TheRock CI.
+  set(TEST_ROCGDB_SCRIPT "${ROCGDB_SOURCE_DIR}/.github/scripts/test_rocgdb.py")
+  if(NOT EXISTS "${TEST_ROCGDB_SCRIPT}")
+    # If the script doesn't exist in the source tree, download it to a temporary location.
+    # This may be the case if we are building a rocgdb source tree that is not part of
+    # the group of branches exercised by CI.
+    set(TEST_ROCGDB_SCRIPT "${CMAKE_CURRENT_BINARY_DIR}/test_rocgdb.py")
+
+    # The source of truth for the CI script is the one in amd-staging.
+    set(TEST_ROCGDB_URL "https://raw.githubusercontent.com/ROCm/ROCgdb/amd-staging/.github/scripts/test_rocgdb.py")
+
+    # Retry download up to 3 times
+    set(download_success FALSE)
+    foreach(attempt RANGE 1 3)
+      message(STATUS "Attempting to download test_rocgdb.py (attempt ${attempt}/3)")
+      file(DOWNLOAD
+        "${TEST_ROCGDB_URL}"
+        "${TEST_ROCGDB_SCRIPT}"
+        STATUS download_status
+        TIMEOUT 60
+      )
+      list(GET download_status 0 status_code)
+      if(status_code EQUAL 0)
+        set(download_success TRUE)
+        message(STATUS "Successfully downloaded test_rocgdb.py to ${TEST_ROCGDB_SCRIPT}")
+        break()
+      else()
+        list(GET download_status 1 error_message)
+        message(WARNING "Download attempt ${attempt} failed: ${error_message}")
+      endif()
+    endforeach()
+
+    if(NOT download_success)
+      message(FATAL_ERROR "Failed to download test_rocgdb.py after 3 attempts")
+    endif()
+  endif()
+
+  install(
+    PROGRAMS ${TEST_ROCGDB_SCRIPT}
+    DESTINATION tests/rocgdb
+    COMPONENT tests
+  )
 else()
   message(STATUS "rocgdb tests: BUILD_TESTING not set. Skipping installation integrity tests.")
 endif()
