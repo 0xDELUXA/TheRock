@@ -169,13 +169,19 @@ jobs:
         run: |
           set -euo pipefail
 
-          cat > "${BUILD_DIR}/force_fail.cmake" <<'EOF'
-          message(FATAL_ERROR "Injected deterministic mock failure")
-          EOF
+          FILE="$(find third-party/sysdeps/common/bzip2 -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' \) | sort | head -n 1)"
 
-          echo "include(${BUILD_DIR}/force_fail.cmake)" >> "${BUILD_DIR}/CMakeLists.txt"
+          if [ -z "$FILE" ]; then
+            echo "No source file found to corrupt"
+            exit 1
+          fi
 
-          echo "Injected deterministic CMake failure"
+          if ! grep -q 'THIS_WILL_NOT_COMPILE' "$FILE"; then
+            printf '\nTHIS_WILL_NOT_COMPILE\n' >> "$FILE"
+            echo "Injected deterministic compile error into $FILE"
+          else
+            echo "Mock failure already injected"
+          fi
 
       - name: Build stage
         run: |
