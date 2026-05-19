@@ -38,11 +38,10 @@ function(therock_sanitizer_configure
     # so make "ASAN" imply shared linkage.
     string(APPEND _stanza "string(APPEND CMAKE_CXX_FLAGS_INIT \" -fsanitize=address -fno-omit-frame-pointer -g -gdwarf-4\")\n")
     string(APPEND _stanza "string(APPEND CMAKE_C_FLAGS_INIT \" -fsanitize=address -fno-omit-frame-pointer -g -gdwarf-4\")\n")
-    # Also set non-INIT flags to propagate to FetchContent subprojects (e.g., gtest).
-    string(APPEND _stanza "string(APPEND CMAKE_CXX_FLAGS \" -gdwarf-4\")\n")
-    string(APPEND _stanza "string(APPEND CMAKE_C_FLAGS \" -gdwarf-4\")\n")
-    string(APPEND _stanza "string(APPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO \" -gdwarf-4\")\n")
-    string(APPEND _stanza "string(APPEND CMAKE_C_FLAGS_RELWITHDEBINFO \" -gdwarf-4\")\n")
+    # Use _INIT variants so CMake appends to its defaults rather than replacing them.
+    # This preserves -O2 from CMAKE_CXX_FLAGS_RELWITHDEBINFO defaults.
+    string(APPEND _stanza "string(APPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO_INIT \" -gdwarf-4\")\n")
+    string(APPEND _stanza "string(APPEND CMAKE_C_FLAGS_RELWITHDEBINFO_INIT \" -gdwarf-4\")\n")
 
     # Sharp edge: The -shared-libsan flag is compiler frontend specific:
     #   gcc (and gfortran): defaults to shared sanitizer linkage
@@ -72,11 +71,10 @@ function(therock_sanitizer_configure
     # so make "TSAN" imply shared linkage.
     string(APPEND _stanza "string(APPEND CMAKE_CXX_FLAGS_INIT \" -fsanitize=thread -fno-omit-frame-pointer -g -gdwarf-4\")\n")
     string(APPEND _stanza "string(APPEND CMAKE_C_FLAGS_INIT \" -fsanitize=thread -fno-omit-frame-pointer -g -gdwarf-4\")\n")
-    # Also set non-INIT flags to propagate to FetchContent subprojects (e.g., gtest).
-    string(APPEND _stanza "string(APPEND CMAKE_CXX_FLAGS \" -gdwarf-4\")\n")
-    string(APPEND _stanza "string(APPEND CMAKE_C_FLAGS \" -gdwarf-4\")\n")
-    string(APPEND _stanza "string(APPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO \" -gdwarf-4\")\n")
-    string(APPEND _stanza "string(APPEND CMAKE_C_FLAGS_RELWITHDEBINFO \" -gdwarf-4\")\n")
+    # Use _INIT variants so CMake appends to its defaults rather than replacing them.
+    # This preserves -O2 from CMAKE_CXX_FLAGS_RELWITHDEBINFO defaults.
+    string(APPEND _stanza "string(APPEND CMAKE_CXX_FLAGS_RELWITHDEBINFO_INIT \" -gdwarf-4\")\n")
+    string(APPEND _stanza "string(APPEND CMAKE_C_FLAGS_RELWITHDEBINFO_INIT \" -gdwarf-4\")\n")
     # Sharp edge: The -shared-libsan flag is compiler frontend specific:
     #   gcc (and gfortran): defaults to shared sanitizer linkage
     #   clang: defaults to static linkage and requires -shared-libsan to link shared
