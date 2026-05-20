@@ -169,12 +169,23 @@ jobs:
         run: |
           set -euo pipefail
 
-          FILE="$(find third-party/sysdeps/common/bzip2 -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' \) | sort | head -n 1)"
+          FILE="$(
+            python3 - <<'PY'
+            import json
+            from pathlib import Path
 
-          if [ -z "$FILE" ]; then
-            echo "No source file found to corrupt"
-            exit 1
-          fi
+            cc = Path("build/compile_commands.json")
+            data = json.loads(cc.read_text())
+
+            for entry in data:
+                src = entry.get("file", "")
+                if src.endswith((".c", ".cc", ".cpp")):
+                    print(src)
+                    break
+            else:
+                raise SystemExit("No compile source file found in compile_commands.json")
+            PY
+          )"
 
           if ! grep -q 'THIS_WILL_NOT_COMPILE' "$FILE"; then
             printf '\nTHIS_WILL_NOT_COMPILE\n' >> "$FILE"
