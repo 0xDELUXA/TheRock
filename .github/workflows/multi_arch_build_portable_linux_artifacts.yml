@@ -171,20 +171,20 @@ jobs:
 
           FILE="$(
             python3 - <<'PY'
-import json
-from pathlib import Path
+              import json
+              from pathlib import Path
 
-cc = Path("build/compile_commands.json")
-data = json.loads(cc.read_text())
+              cc = Path("build/compile_commands.json")
+              data = json.loads(cc.read_text())
 
-for entry in data:
-    src = entry.get("file", "")
-    if src.endswith((".c", ".cc", ".cpp")):
-        print(src)
-        break
-else:
-    raise SystemExit("No compile source file found in compile_commands.json")
-PY
+              for entry in data:
+                  src = entry.get("file", "")
+                  if src.endswith((".c", ".cc", ".cpp")):
+                      print(src)
+                      break
+              else:
+                  raise SystemExit("No compile source file found in compile_commands.json")
+            PY
           )"
 
           if ! grep -q 'THIS_WILL_NOT_COMPILE' "$FILE"; then
