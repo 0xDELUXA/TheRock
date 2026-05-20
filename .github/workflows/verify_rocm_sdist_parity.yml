@@ -1,0 +1,78 @@
+# Copyright Advanced Micro Devices, Inc.
+# SPDX-License-Identifier: MIT
+
+# Guards #5347: the rocm meta sdist is produced independently by both
+# the Linux and Windows release jobs and uploaded to the same S3 key in
+# therock-ci-artifacts. If they diverge, the last-writer-wins overwrite
+# silently drops one platform's device extras from the published sdist.
+# This workflow downloads both platforms' rocm-*.tar.gz from the current
+# run's artifact prefixes and fails if their extracted contents differ.
+#
+# TODO: This is a regression guard, not a publishing guard. The parity
+# check runs after publish_to_release_buckets inside each platform
+# workflow, so a divergent sdist will already be in the public index by
+# the time this job fails the run. Promoting to a true gate requires
+# pulling publish_to_release_buckets out of the per-platform workflows
+# and sequencing it after this job in multi_arch_release.yml.
+
+name: Verify rocm sdist parity
+
+on:
+  workflow_call:
+    inputs:
+      release_type:
+        description: 'Release type: "" for CI, or "dev", "nightly", "prerelease".'
+        type: string
+        default: ""
+      repository:
+        description: "Repository to checkout. Defaults to github.repository."
+        type: string
+        default: ""
+      ref:
+        description: "Branch, tag, or SHA to checkout."
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  verify_sdist_parity:
+    name: Verify rocm sdist parity
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write  # required by configure_aws_artifacts_credentials
+    steps:
+      - name: Checking out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ inputs.repository || github.repository }}
+          ref: ${{ inputs.ref }}
+
+      - name: Configure AWS Credentials
+        uses: ./.github/actions/configure_aws_artifacts_credentials
+        with:
+          release_type: ${{ inputs.release_type }}
+
+      - name: Download Linux rocm sdist
+        run: |
+          mkdir -p sdist-parity/linux
+          aws s3 cp \
+            s3://therock-ci-artifacts/${{ github.run_id }}-linux/python/ \
+            sdist-parity/linux/ \
+            --recursive --exclude '*' --include 'rocm-*.tar.gz'
+
+      - name: Download Windows rocm sdist
+        run: |
+          mkdir -p sdist-parity/windows
+          aws s3 cp \
+            s3://therock-ci-artifacts/${{ github.run_id }}-windows/python/ \
+            sdist-parity/windows/ \
+            --recursive --exclude '*' --include 'rocm-*.tar.gz'
+
+      - name: Verify rocm sdist parity
+        run: |
+          python ./build_tools/github_actions/verify_rocm_sdist_parity.py \
+            --linux-tarball-dir=sdist-parity/linux \
+            --windows-tarball-dir=sdist-parity/windows
