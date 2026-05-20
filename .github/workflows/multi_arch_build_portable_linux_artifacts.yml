@@ -169,23 +169,49 @@ jobs:
         run: |
           set -euo pipefail
 
-          cat > /tmp/find_compile_source.py <<'PY'
-          import json
-          from pathlib import Path
+          FILE="$(
+            python3 - <<'PY'
+            import json
+            from pathlib import Path
 
-          cc = Path("build/compile_commands.json")
-          data = json.loads(cc.read_text())
+            cc = Path("build/compile_commands.json")
+            data = json.loads(cc.read_text())
 
-          for entry in data:
-              src = entry.get("file", "")
-              if src.endswith((".c", ".cc", ".cpp")):
-                  print(src)
-                  break
-          else:
-              raise SystemExit("No compile source file found in compile_commands.json")
-          PY
+            preferred_prefixes = (
+                "rocm-systems/projects/rocm-core/",
+                "rocm-systems/projects/rocm-smi-lib/",
+                "rocm-systems/projects/rocprofiler-register/",
+                "base/half/",
+            )
 
-          FILE="$(python3 /tmp/find_compile_source.py)"
+            candidates = []
+
+            for entry in data:
+                src = entry.get("file", "")
+
+                if not src.endswith((".c", ".cc", ".cpp")):
+                    continue
+
+                if "/tests/" in src or src.startswith("tests/"):
+                    continue
+
+                candidates.append(src)
+
+            for prefix in preferred_prefixes:
+                for src in candidates:
+                    if prefix in src:
+                        print(src)
+                        raise SystemExit(0)
+
+            if candidates:
+                print(candidates[0])
+                raise SystemExit(0)
+
+            raise SystemExit("No compile source file found")
+            PY
+          )"
+
+          echo "Selected source file: $FILE"
 
           if ! grep -q 'THIS_WILL_NOT_COMPILE' "$FILE"; then
             printf '\nTHIS_WILL_NOT_COMPILE\n' >> "$FILE"
